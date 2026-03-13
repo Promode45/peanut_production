@@ -1,0 +1,150 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+```
+```{r}
+data <- read.csv("peanut_prod.csv")
+```
+
+```{r}
+data_w <- data |> 
+  janitor::clean_names() |> 
+  select(year,period,state,value) |> 
+  mutate(value = as.numeric(gsub(",","", value)),
+         state = factor(state))
+```
+
+
+
+```{r fig.width= 8, fig.height=6, dpi=300}
+data_w |>
+  filter(year >2020) |> 
+  filter(state %in% c("GEORGIA","ALABAMA","FLORIDA","US TOTAL")) |> 
+  filter(period == "YEAR") |> 
+  mutate(value_k = value/1000,
+         line_type = if_else(state == "US TOTAL", "National Total", "State")) |> 
+  ggplot(aes(year,value_k, color = state))+
+  geom_point(size = 2)+
+  geom_line(linewidth = 0.8)+
+  scale_color_viridis_d(name = "Region")+
+  scale_linetype_manual(name = NULL, values = c("National Total" = "dashed", 
+                                                "State" = "solid"))+
+  scale_x_continuous(breaks = seq(2021,2025,1))+
+  scale_y_continuous(trans = 'log10', labels = scales::comma,breaks = c(1000,2500,5000,10000,20000))+
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "U.S. and State Peanut Acres Planted, 2021-2025", 
+       caption  = "Source: USDA NASS",
+       x = "Year",
+       y = "Acres planted (thousands)")
+  
+```
+
+```{r}
+consTill_county <- read.csv("consTill_county.csv")
+```
+
+```{r}
+consTill_state <- read.csv("consTill_state.csv")
+
+consTill_state_w <- consTill_state |> 
+  janitor::clean_names() |> 
+  dplyr::select(year,state,value,cv) |> 
+  mutate(value = as.numeric(gsub(",","",value)))
+```
+```{r}
+group_color <- c("GEORGIA" = "#BA0C2F", "FLORIDA" = "#FA4616", "ALABAMA" = "#828A8F")
+```
+
+```{r}
+label_data1 <- consTill_state_w |> 
+  mutate(value_k = value/1000) |> 
+  filter(year == 2022)
+
+consTill_state_w |>
+   mutate(value_k = value/1000) |> 
+  #        line_type = if_else(state == "US TOTAL", "National Total", "State")) |> 
+  ggplot(aes(year,value_k, color = state))+
+  geom_point(size = 2)+
+  geom_line(linewidth = 0.8)+
+  geom_text_repel(
+    data = label_data1,
+    aes(label = str_to_title(state)),  # converts "GEORGIA" to "Georgia"
+    nudge_x = 0.3,
+    direction = "y",
+    hjust = 0,
+    segment.size = 0
+  ) +
+ scale_x_continuous(
+  breaks = c(2012, 2017, 2022),
+  limits = c(2011, 2024),
+  expand = expansion(mult = 0)
+)+
+  scale_color_manual(name = "State",
+                     values = group_color) +
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "none",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Conservation Till in Southern States, 2012-2022", 
+       caption  = "Source: USDA NASS Census (2012,2017,2022)",
+       x = "Year",
+       y = "Acres (thousands)")
+```
+
+```{r}
+coverCrop_state <- read.csv("coverCrop_state.csv")
+
+coverCrop_state_w <- coverCrop_state |> 
+  janitor::clean_names() |> 
+  dplyr::select(year,state,value,cv) |> 
+  mutate(value = as.numeric(gsub(",","",value)))
+```
+
+```{r}
+library(ggrepel)
+label_data2 <- coverCrop_state_w |> 
+  mutate(value_k = value/1000) |> 
+  filter(year == 2022)
+
+coverCrop_state_w|>
+   mutate(value_k = value/1000) |> 
+  #        line_type = if_else(state == "US TOTAL", "National Total", "State")) |> 
+  ggplot(aes(year,value_k, color = state))+
+  geom_point(size = 2)+
+  geom_line(linewidth = 0.8)+
+  geom_text_repel(
+    data = label_data2,
+    aes(label = str_to_title(state)),  # converts "GEORGIA" to "Georgia"
+    nudge_x = 0.2,
+    direction = "y",
+    hjust = 0,
+    segment.size = 0
+  ) +
+  scale_x_continuous(
+  breaks = c(2012, 2017, 2022),
+  limits = c(2011, 2024),
+  expand = expansion(mult = 0)
+)+
+  scale_color_manual(name = "State",
+    values = group_color) +
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "none",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Cover Crop in Southern States, 2012-2022", 
+       caption  = "Source: USDA NASS Census (2012,2017,2022)",
+       x = "Year",
+       y = "Acres (thousands)")
+```
+
