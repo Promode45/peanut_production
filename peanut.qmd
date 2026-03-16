@@ -6,6 +6,7 @@ editor: visual
 
 ```{r}
 library(tidyverse)
+library(ggrepel)
 ```
 ```{r}
 data <- read.csv("peanut_prod.csv")
@@ -48,9 +49,7 @@ data_w |>
   
 ```
 
-```{r}
-consTill_county <- read.csv("consTill_county.csv")
-```
+
 
 ```{r}
 consTill_state <- read.csv("consTill_state.csv")
@@ -100,6 +99,24 @@ consTill_state_w |>
        x = "Year",
        y = "Acres (thousands)")
 ```
+```{r}
+consTill_state_w |> 
+  mutate(year = factor(year),
+         value_k = value/1000) |> 
+  ggplot(aes(state,value_k, fill = year))+
+  geom_col(position = "dodge")+
+  scale_fill_manual(name = "Year",
+    values = c("2012" = "#d4a96a", "2017" = "#8c6d3f", "2022" = "#3d2b1f"))+
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Conservation Tillage in Southern States, 2012-2022", 
+       caption  = "Source: USDA NASS Census (2012,2017,2022)",
+       x = element_blank(),
+       y = "Acres (thousands)")
+```
 
 ```{r}
 coverCrop_state <- read.csv("coverCrop_state.csv")
@@ -110,8 +127,8 @@ coverCrop_state_w <- coverCrop_state |>
   mutate(value = as.numeric(gsub(",","",value)))
 ```
 
-```{r}
-library(ggrepel)
+```{r fig.width=5, fig.height=4}
+
 label_data2 <- coverCrop_state_w |> 
   mutate(value_k = value/1000) |> 
   filter(year == 2022)
@@ -146,5 +163,147 @@ coverCrop_state_w|>
        caption  = "Source: USDA NASS Census (2012,2017,2022)",
        x = "Year",
        y = "Acres (thousands)")
+```
+```{r}
+coverCrop_state_w |> 
+  mutate(year = factor(year),
+         value_k = value/1000) |> 
+  ggplot(aes(state,value_k, fill = year))+
+  geom_col(position = "dodge")+
+  scale_fill_manual(name = "Year",
+    values = c("2012" = "#d4a96a", "2017" = "#8c6d3f", "2022" = "#3d2b1f"))+
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Cover Crop in Southern States, 2012-2022", 
+       caption  = "Source: USDA NASS Census (2012,2017,2022)",
+       x = "State",
+       y = "Acres (thousands)")
+```
+
+```{r}
+consTill_county <- read.csv("consTill_county.csv")
+
+coverCrop_county <- read.csv("covercrop_county.csv")
+```
+
+```{r}
+consTill_county_w <- consTill_county |> 
+  janitor::clean_names() |> 
+  select(year,state,ag_district,county,value,cv) |> 
+  mutate(value = as.numeric(gsub(",","",value)),
+         county = str_to_title(county),
+         year = factor(year))
+
+coverCrop_county_w <- coverCrop_county |> 
+  janitor::clean_names() |> 
+  select(year,state,ag_district,county,value,cv) |> 
+  mutate(value = as.numeric(gsub(",","",value)),
+         county = str_to_title(county),
+         year = factor(year))
+```
+
+```{r}
+consTill_county_w[is.na(consTill_county_w$value),]
+```
+
+```{r}
+consTill_county_w |> 
+  group_by(state,year) |> 
+  top_n(3,value)
+```
+
+```{r}
+peanut_county <- read.csv("peanut_county.csv")
+```
+
+```{r}
+peanut_county_w <- peanut_county |> 
+  janitor::clean_names() |> 
+  select(year,state,ag_district,county,value) |> 
+  mutate(value = as.numeric(gsub(",","",value)),
+         county = str_to_title(county),
+         year = factor(year))
+```
+
+```{r}
+top_three <- peanut_county_w |> 
+  group_by(state,year) |> 
+  top_n(3,value) |> 
+  ungroup()
+```
+
+```{r}
+top_three|> 
+  group_by(state,year) |> 
+  mutate(value_k = value/1000) |> 
+  summarise(sum = sum(value_k, na.rm = TRUE)) |> 
+  ungroup() |> 
+  ggplot(aes(state,sum,fill = year))+
+  geom_col(position = "dodge")+
+  scale_fill_manual(name = "Year",
+    values = c("2012" = "#d4a96a", "2017" = "#8c6d3f", "2022" = "#3d2b1f"))+
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Peanut Production in top three counties, 2012-2022", 
+       caption  = "Source: USDA NASS Census (2012,2017,2022)",
+       x = "State",
+       y = "Acres harvested (thousands)")
+```
+
+```{r}
+top_three_consTill <- top_three |> 
+  left_join(consTill_county_w, by = c("county","state","year"))
+
+top_three_coverCrop <- top_three |> 
+  left_join(coverCrop_county_w, by = c("county","state","year"))
+```
+
+```{r}
+top_three_consTill |> 
+  filter(!year == 2012) |> 
+  group_by(state,year) |> 
+  mutate(value_k = value.y/1000) |> 
+  summarise(sum = sum(value_k, na.rm = TRUE)) |> 
+  ungroup() |> 
+  ggplot(aes(state,sum,fill = year))+
+  geom_col(position = "dodge")+
+  scale_fill_manual(name = "Year",
+    values = c("2017" = "#8c6d3f", "2022" = "#3d2b1f"))+
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Conservation tillage in top three counties, 2017-2022", 
+       caption  = "Source: USDA NASS Census (2017,2022)",
+       x = "State",
+       y = "Acres harvested (thousands)")
+```
+```{r}
+top_three_coverCrop |> 
+  filter(!year == 2012) |> 
+  group_by(state,year) |> 
+  mutate(value_k = value.y/1000) |> 
+  summarise(sum = sum(value_k, na.rm = TRUE)) |> 
+  ungroup() |> 
+  ggplot(aes(state,sum,fill = year))+
+  geom_col(position = "dodge")+
+  scale_fill_manual(name = "Year",
+    values = c("2017" = "#90EE90", "2022" = "#32CD32"))+
+  theme_minimal(base_size = 12)+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA))+
+  labs(title = "Cover Crop Adoption in top three counties, 2017-2022", 
+       caption  = "Source: USDA NASS Census (2017,2022)",
+       x = "State",
+       y = "Acres harvested (thousands)")
 ```
 
